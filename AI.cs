@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using StateStuff;
 
 public class AI : MonoBehaviour
@@ -11,23 +9,29 @@ public class AI : MonoBehaviour
     [HideInInspector] public Rigidbody2D rb;
     public Transform laserPos;
     public float speed;
-    public string wallTag;
-    public string playerTag;
+    public LayerMask wallLayer;
+    public LayerMask playerLayer;
     /***************************************************/
     //**************************************************/      values for statemachine process
     [HideInInspector] public RaycastHit2D ray;
     public float distance = 5.0f;
     [HideInInspector] public Vector2 rayDirection;
-    /***************************************************/
-    //**************************************************/      values for patrol state
-    public float pDistance = 0.2f;
-    [HideInInspector] public RaycastHit2D pRay;
+    [HideInInspector] public Collider2D detectCol;
+    [HideInInspector] public Transform player;
+    public float detectRadius;
     /***************************************************/
     //**************************************************/      values for fight state
-    [HideInInspector] public RaycastHit2D fRay;
-    public float fDistance;
-    public float fightSpeed;
-    [HideInInspector] public Transform player;
+    [HideInInspector] public Collider2D colForAtt;
+    public float attRadius;
+    /**************************************************/ 
+    //*************************************************/      getting hit values
+    [SerializeField] private float freezeTime;
+    [SerializeField] private float intense;
+    private float freezeTimeCounter;
+    private bool recovery;
+    /**************************************************/
+    //*************************************************/      jump values
+    public float jumpForce;
     /**************************************************/
 
     private void Start()
@@ -41,30 +45,63 @@ public class AI : MonoBehaviour
     private void Update()
     {   
         colliderCheck();
-        stateMachine.Update();
+
+        if ( recovery == false )
+        {
+            stateMachine.Update();
+        }
+        else if ( recovery )
+        {
+            freezeTimeCounter -= Time.deltaTime;
+
+            if ( freezeTimeCounter <= 0.0f )
+            {
+                recovery = false;
+            }
+        }
+        
     }
 
     private void FixedUpdate()
     {
-        stateMachine.FixedUpdate();
+        if ( recovery == false)
+            stateMachine.FixedUpdate();
     }
 
     private void colliderCheck()
     {
-        ray = Physics2D.Raycast(laserPos.position,rayDirection,distance);
+        ray = Physics2D.Raycast( laserPos.position, rayDirection, distance, wallLayer );
 
-        if(ray.collider == null)
-            return;
+        detectCol = Physics2D.OverlapCircle( transform.position, detectRadius, playerLayer);
 
-        if(ray.collider.CompareTag(playerTag) == true)
+        if ( detectCol == true && stateMachine.currentState != Fight.Instance )
         {
-            player = ray.collider.transform;
+            player = detectCol.transform;
             stateMachine.changeState(Fight.Instance);
         }
-        else if(ray.collider.CompareTag(playerTag) == false && stateMachine.currentState == Fight.Instance)
+        else if ( detectCol == false && stateMachine.currentState == Fight.Instance )
         {
-            player = null;
             stateMachine.changeState(Patrol.Instance);
+            player = null;
         }
+    }
+
+    public void hurt( float dir )
+    {
+        intense *= dir;
+        freezeTimeCounter = freezeTime;
+        recovery = true;
+        rb.velocity = new Vector2( intense, Mathf.Abs(intense) / 2 );
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Vector2 to = new Vector2(laserPos.position.x + distance, laserPos.position.y);
+        Gizmos.DrawLine( laserPos.position, to);
+        Gizmos.color = Color.blue;
+        Gizmos.DrawWireSphere(transform.position,detectRadius);
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(laserPos.position,attRadius);
     }
 }

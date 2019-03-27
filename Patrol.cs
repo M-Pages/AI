@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using StateStuff;
 
 public class Patrol : state<AI> 
@@ -46,23 +44,19 @@ public class Patrol : state<AI>
 
     public override void UpdateState(AI owner)
     {
-        owner.pRay = Physics2D.Raycast(owner.laserPos.position,owner.rayDirection,owner.pDistance);
+        if ( owner.ray.collider )
+        {
+            Vector2 sc = owner.transform.localScale;
+            sc.x *= -1.0f;
+            owner.rayDirection.x *= -1.0f;
+            owner.transform.localScale = sc;
+            owner.speed *= -1.0f;
+        }
     }
 
     public override void FixedUpdateState(AI owner)
     {
         owner.rb.velocity = new Vector2(owner.speed,owner.rb.velocity.y);
-
-        if(owner.pRay.collider != null)
-        {
-            if(owner.pRay.collider.CompareTag(owner.wallTag) == true)
-            {
-                owner.speed *= -1.0f;
-                owner.transform.localScale = new Vector2(-owner.transform.localScale.x,owner.transform.localScale.y);
-                owner.rayDirection = new Vector2(owner.rayDirection.x * -1.0f,owner.rayDirection.y);
-            }
-        }
-
     }
 
 }
